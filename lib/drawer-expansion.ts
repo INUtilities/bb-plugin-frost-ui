@@ -41,6 +41,16 @@ ${S}[${STAGE}="expanded"] > .overflow-y-auto {
   min-height: 0;
   flex: 1 1 auto;
 }
+/* Nested command pickers must pass the expanded height through to their list. */
+${S}[${STAGE}="expanded"] [cmdk-root] :is(
+  [cmdk-list]:has(.overflow-y-auto), [cmdk-list-sizer]:has(.overflow-y-auto),
+  [cmdk-group]:has(.overflow-y-auto), [cmdk-group-items]:has(> .overflow-y-auto),
+  [cmdk-group-items] > .overflow-y-auto
+) {
+  max-height: none !important;
+  min-height: 0;
+  flex: 1 1 auto;
+}
 ${SQUIRCLE} { border-radius: 48px !important; }
 @supports (corner-shape: squircle) {
   ${SQUIRCLE} {

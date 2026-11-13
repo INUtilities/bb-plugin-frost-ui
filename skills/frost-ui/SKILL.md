@@ -15,6 +15,7 @@ description: frost-ui의 떠 있는 표면과 phone 패널 모션·햅틱을 변
 - 공통 tooltip과 명시한 직접 tooltip, 확인된 BB 텍스트 선택 메뉴 및 일반 Sonner 오류 toast의 바깥면을 frost로 표시한다. tooltip 현행 반경과 별도 색을 쓰는 오류·다른 알림은 유지한다. 특정 plugin id·class·입력 이름·tooltip id를 지목하지 않는다.
 - phone 공통 drawer는 본문을 위로 밀어 최대 높이까지 펼칠 수 있다. 스크롤 가능한 본문을 아래로 밀어 축소하거나 닫지 않으며 handle·기존 바깥 탭·Escape로 조작한다. 실제 최대 높이에서만 내부 세로 스크롤을 허용하고 handle로 줄이면 스크롤한 상태에서도 잠근다. 키보드 inset으로 작아진 동안은 예외다. 화면 밖 항목으로 keyboard focus가 가면 먼저 확장하고 전환 종료 후 해당 항목을 보이게 한다. 실제 닫기·재열기 때 세로 위치를 초기화하며, 중첩 화면의 부모 가림과 키보드 변경은 닫기로 취급하지 않는다. `touch-action: none` 등 자체 제스처·입력·텍스트 편집·가로 스크롤은 유지한다.
 - 공통 Vaul bottom drawer의 최대 높이는 화면 높이에서 상단 safe area·8px·keyboard inset을 뺀 값으로 제한한다. 특정 plugin의 별도 높이를 강제하지 않는다. 초기 고정 높이는 유지하며 내부 세로 스크롤은 위의 높이·키보드 규칙을 따른다.
+- phone drawer가 확장되면 중첩된 command 목록도 남은 높이를 채운다. 검색창·목록 제목·하단 동작의 자리는 유지하고, 접으면 원래 목록 높이 제한으로 돌아간다.
 - 모바일 drawer의 시각 닫기 X는 소유 plugin에서 생성하지 않는다. Frost는 plugin 내부 경로로 X를 숨기지 않는다. 키보드 닫기와 접근성 닫기·focus 복귀는 소유 컴포넌트가 유지한다.
 - 열린 phone 공통 drawer의 스크롤이 끝에 닿거나 바깥에서 스크롤할 때 뒤쪽 패널로 전달되지 않도록 막는다. drawer 내부에서 가능한 스크롤과 desktop 동작은 유지한다. 공통 drawer 표식이 없는 별도 sheet와 iframe·native view는 별도로 확인한다.
 - phone drawer 안에서 아래에 스크롤할 내용이 남은 영역의 끝에만 터치를 가로채지 않는 흐림을 표시한다. 내용이 짧거나 끝에 도달하면 제거하고, drawer 밖과 desktop에는 표시하지 않는다.
