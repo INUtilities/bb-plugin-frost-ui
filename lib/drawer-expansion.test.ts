@@ -394,7 +394,7 @@ it("lets a direct scrolling body use the expanded height without changing the he
   assert.match(DRAWER_EXPANSION_CSS, /\[data-bb-mobile-sheet-stage="expanded"\]\s*>\s*\.overflow-y-auto\s*\{[^}]*max-height:\s*none\s*!important[^}]*flex:\s*1\s+1\s+auto/s);
 });
 
-it("expands from content, preserves taps, and keeps expanded height on a downward body drag", () => {
+it("expands and shrinks from content while preserving taps and text input", () => {
   const dom = new JSDOM(`<div data-persistent-drawer-content data-state="open"><div data-persistent-drawer-handle></div><button id="row">Row</button><input id="input"></div>`);
   const doc = dom.window.document, drawer = doc.querySelector<HTMLElement>("[data-persistent-drawer-content]")!;
   writeSidebarChrome(doc, { device: "phone", orientation: "portrait", viewport: "narrow", hitTarget: "large" });
@@ -417,9 +417,9 @@ it("expands from content, preserves taps, and keeps expanded height on a downwar
   send(row, "touchend", 100, 100);
   assert.equal(drawer.getAttribute("data-bb-mobile-sheet-stage"), "expanded");
   let escape = 0; doc.addEventListener("keydown", event => { if (event.key === "Escape") escape++; });
-  send(row, "touchstart", 100, 100); send(row, "touchmove", 100, 620); send(row, "touchend", 100, 620);
+  send(row, "touchstart", 100, 100); send(row, "touchmove", 100, 340); send(row, "touchend", 100, 340);
   assert.equal(escape, 0);
-  assert.equal(drawer.getAttribute("data-bb-mobile-sheet-stage"), "expanded");
+  assert.equal(drawer.hasAttribute("data-bb-mobile-sheet-stage"), false);
   dispose(); dom.window.close();
 });
 

@@ -533,7 +533,7 @@ export function injectDrawerExpansion(doc: Document): (() => void) & { canScroll
     for (const connection of previousConnections) { connection.cleanup?.(); connection.onDisconnect?.(); }
     if (!shuttingDown) doc.dispatchEvent(new view.CustomEvent("bb-frost-drawer-availability", { detail: { version: 1, available: true } }));
   };
-  let touch: { id: number; x: number; y: number; handle: Element; drawer: HTMLElement; scroller: HTMLElement | null; started: boolean } | null = null;
+  let touch: { id: number; x: number; y: number; handle: Element; drawer: HTMLElement; scrollers: HTMLElement[]; started: boolean } | null = null;
   let suppressClickUntil = 0;
   const touchStart = (event: TouchEvent) => {
     if (readSidebarChrome(doc).device !== "phone" || event.touches.length !== 1 || drag) return;
@@ -543,15 +543,15 @@ export function injectDrawerExpansion(doc: Document): (() => void) & { canScroll
     const handle = drawer?.querySelector("[data-persistent-drawer-handle]");
     if (!drawer || !handle) return;
     if (hasOwnDrawerTouchGesture(target, drawer, view)) return;
-    let scroller: HTMLElement | null = null;
-    for (let node: Element | null = target; node && node !== drawer; node = node.parentElement) {
+    const scrollers: HTMLElement[] = [];
+    for (let node: Element | null = target; node && node !== drawer.parentElement; node = node.parentElement) {
       if (!(node instanceof view.HTMLElement)) continue;
       const style = view.getComputedStyle(node);
       if (node.scrollWidth > node.clientWidth + 1 && /auto|scroll/.test(style.overflowX)) return;
-      if (!scroller && node.scrollHeight > node.clientHeight + 1 && /auto|scroll/.test(style.overflowY)) scroller = node;
+      if (node.scrollHeight > node.clientHeight + 1 && /auto|scroll/.test(style.overflowY)) scrollers.push(node);
     }
     const point = event.touches[0]!;
-    touch = { id: point.identifier, x: point.clientX, y: point.clientY, handle, drawer, scroller, started: false };
+    touch = { id: point.identifier, x: point.clientX, y: point.clientY, handle, drawer, scrollers, started: false };
   };
   const touchMove = (event: TouchEvent) => {
     const current = touch;
@@ -563,8 +563,9 @@ export function injectDrawerExpansion(doc: Document): (() => void) & { canScroll
       if (Math.max(Math.abs(dx), Math.abs(dy)) < 7) return;
       if (Math.abs(dx) >= Math.abs(dy)) { touch = null; return; }
       const expanded = sheets.get(current.drawer)?.expanded === true;
-      // Once expanded, body gestures belong only to content. Shrink with the handle.
-      if (keyboardVisible(current.drawer) || expanded || (current.scroller && dy > 0)) { touch = null; return; }
+      // Scroll toward the content's top before handing a downward drag to the drawer.
+      const scrollingDown = dy > 0 && current.scrollers.some(scroller => scroller.scrollTop > 0);
+      if (keyboardVisible(current.drawer) || (expanded && dy < 0) || scrollingDown) { touch = null; return; }
       down({ target: current.handle, button: 0, isPrimary: true, pointerId: -current.id - 1, clientY: current.y } as unknown as PointerEvent);
       if (!drag) { touch = null; return; }
       drag.content = true;

@@ -35,7 +35,7 @@ function fixture(autoLayout = false) {
     item.dispatchEvent(event); return event;
   };
   const scroll = (top: number) => { list.scrollTop = top; list.dispatchEvent(new dom.window.Event("scroll")); };
-  const expand = () => { detail.controller!.toggle(); height = 720; };
+  const expand = () => { detail.controller!.toggle(); if (!autoLayout) height = 720; };
   const dispose = () => { guard(); expansion(); dom.window.close(); };
   return { dom, doc, drawer, handle, list, item, detail, touch, wheel, scroll, expand, dispose, height: (next: number) => { height = next; } };
 }
@@ -50,12 +50,77 @@ it("locks collapsed vertical wheel scroll and unlocks only at the measured maxim
   f.dispose();
 });
 
-it("does not shrink a scrollable expanded drawer by swiping its body down at scroll top", () => {
-  const f = fixture(); f.expand();
-  f.touch("touchstart", 200); f.touch("touchmove", 400); f.touch("touchend", 400);
-  assert.equal(f.drawer.getAttribute("data-bb-mobile-sheet-stage"), "expanded");
-  assert.equal(f.drawer.style.getPropertyValue("--bb-mobile-sheet-height"), "720px");
-  f.dispose();
+it("shrinks an expanded drawer by dragging its scrolling body down from the top", () => {
+  const f = fixture(true); f.expand();
+  try {
+    f.touch("touchstart", 200);
+    assert.equal(f.touch("touchmove", 440).defaultPrevented, true);
+    const draggedHeight = Number.parseFloat(f.drawer.style.getPropertyValue("--bb-mobile-sheet-height"));
+    assert.ok(draggedHeight < 720 && draggedHeight > 320, "the body drag must move the drawer before release");
+    f.touch("touchend", 440);
+    assert.equal(f.drawer.hasAttribute("data-bb-mobile-sheet-stage"), false);
+    assert.equal(f.list.scrollTop, 0);
+    assert.equal(f.wheel(60).defaultPrevented, true, "shrinking must relock content scrolling");
+  } finally { f.dispose(); }
+});
+
+it("scrolls content before shrinking while the list is away from the top", () => {
+  const f = fixture(true); f.expand(); f.scroll(240);
+  try {
+    f.touch("touchstart", 200);
+    assert.equal(f.touch("touchmove", 440).defaultPrevented, false);
+    f.touch("touchend", 440);
+    assert.equal(f.drawer.getAttribute("data-bb-mobile-sheet-stage"), "expanded");
+    assert.equal(f.drawer.style.getPropertyValue("--bb-mobile-sheet-height"), "720px");
+    f.scroll(0);
+    f.touch("touchstart", 200);
+    assert.equal(f.touch("touchmove", 440).defaultPrevented, true);
+    f.touch("touchend", 440);
+    assert.equal(f.drawer.hasAttribute("data-bb-mobile-sheet-stage"), false);
+  } finally { f.dispose(); }
+});
+
+it("keeps upward body gestures scrolling after expansion", () => {
+  const f = fixture(true); f.expand();
+  try {
+    f.touch("touchstart", 440);
+    assert.equal(f.touch("touchmove", 200).defaultPrevented, false);
+    f.touch("touchend", 200);
+    assert.equal(f.drawer.getAttribute("data-bb-mobile-sheet-stage"), "expanded");
+  } finally { f.dispose(); }
+});
+
+it("waits for all nested scrolling ancestors to reach the top before shrinking", () => {
+  const f = fixture(true); f.expand();
+  const nested = f.doc.createElement("div"); nested.style.overflowY = "auto";
+  f.list.append(nested); nested.append(f.item);
+  Object.defineProperties(nested, { clientHeight: { value: 100 }, scrollHeight: { value: 300 } });
+  try {
+    for (const [innerTop, outerTop] of [[40, 0], [0, 80]]) {
+      nested.scrollTop = innerTop!; f.scroll(outerTop!);
+      f.touch("touchstart", 200);
+      assert.equal(f.touch("touchmove", 440).defaultPrevented, false);
+      f.touch("touchend", 440);
+      assert.equal(f.drawer.getAttribute("data-bb-mobile-sheet-stage"), "expanded");
+    }
+    nested.scrollTop = 0; f.scroll(0);
+    f.touch("touchstart", 200);
+    assert.equal(f.touch("touchmove", 440).defaultPrevented, true);
+    f.touch("touchend", 440);
+    assert.equal(f.drawer.hasAttribute("data-bb-mobile-sheet-stage"), false);
+  } finally { f.dispose(); }
+});
+
+it("keeps an expanded drawer's own nonzero scroll position in charge of downward gestures", () => {
+  const f = fixture(true); f.drawer.style.overflowY = "auto";
+  Object.defineProperties(f.drawer, { clientHeight: { value: 720 }, scrollHeight: { value: 1000 } });
+  f.expand(); f.drawer.scrollTop = 120;
+  try {
+    f.touch("touchstart", 200);
+    assert.equal(f.touch("touchmove", 440).defaultPrevented, false);
+    f.touch("touchend", 440);
+    assert.equal(f.drawer.getAttribute("data-bb-mobile-sheet-stage"), "expanded");
+  } finally { f.dispose(); }
 });
 
 it("relocks after handle collapse even when the list was already scrolled", () => {
