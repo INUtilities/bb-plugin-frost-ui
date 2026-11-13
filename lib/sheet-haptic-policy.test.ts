@@ -4,11 +4,11 @@ import { JSDOM } from "jsdom";
 import { injectPhoneDrawers } from "./phone-drawers.ts";
 import { writeSidebarChrome } from "./sidebar-chrome.ts";
 
-for (const [name, attributes, expected] of [
-  ["commit sheet", 'data-bb-mobile-sheet-settle-haptic="off"', 1],
-  ["ordinary sheet", "", 2],
+for (const [name, attributes] of [
+  ["commit sheet", 'data-bb-mobile-sheet-settle-haptic="off"'],
+  ["ordinary sheet", ""],
 ] as const) {
-  it(`${name} pulses at grab and follows its own release policy`, () => {
+  it(`${name} pulses once when resizing starts, not on grab or settle`, () => {
     const dom = new JSDOM(`<div data-persistent-drawer-content data-state="open" ${attributes}>
       <div data-persistent-drawer-handle><div></div></div>
     </div>`);
@@ -30,12 +30,65 @@ for (const [name, attributes, expected] of [
       handle.dispatchEvent(event);
     };
     send("pointerdown", 410);
-    assert.equal(pulses.length, 1, "one grab haptic");
+    assert.equal(pulses.length, 0, "no grab haptic");
     send("pointermove", 18);
-    assert.equal(pulses.length, 1, "no motion haptic");
+    assert.equal(pulses.length, 1, "one pulse when motion starts");
     send("pointerup", 18);
     assert.equal(drawer.getAttribute("data-bb-mobile-sheet-stage"), "expanded");
-    assert.equal(pulses.length, expected, "release haptic follows the sheet policy");
+    assert.equal(pulses.length, 1, "no extra settle haptic");
     dispose(); dom.window.close();
   });
 }
+
+it("pulses once on each newly opened phone drawer and ignores pre-existing drawers", async () => {
+  const dom = new JSDOM(`<div data-persistent-drawer-content data-state="open"></div>`);
+  const doc = dom.window.document;
+  writeSidebarChrome(doc, { device: "phone", orientation: "portrait", viewport: "narrow", hitTarget: "large" });
+  const pulses: unknown[] = [];
+  Object.assign(dom.window, { bb: { native: { capabilities: ["haptic"], post: (message: unknown) => pulses.push(message) } } });
+  const dispose = injectPhoneDrawers(doc);
+  await Promise.resolve();
+  assert.equal(pulses.length, 0);
+  const drawer = doc.createElement("div");
+  drawer.setAttribute("data-persistent-drawer-content", "");
+  drawer.setAttribute("data-state", "open");
+  doc.body.append(drawer);
+  await Promise.resolve();
+  assert.equal(pulses.length, 1);
+  drawer.setAttribute("data-state", "closed");
+  await Promise.resolve();
+  drawer.setAttribute("data-state", "open");
+  await Promise.resolve();
+  assert.equal(pulses.length, 2);
+  drawer.remove();
+  await Promise.resolve();
+  doc.body.append(drawer);
+  await Promise.resolve();
+  assert.equal(pulses.length, 3);
+  writeSidebarChrome(doc, { device: "desktop", orientation: "landscape", viewport: "wide", hitTarget: "small" });
+  const desktopDrawer = drawer.cloneNode() as Element;
+  doc.body.append(desktopDrawer);
+  await Promise.resolve();
+  assert.equal(pulses.length, 3);
+  dispose();
+  drawer.remove();
+  doc.body.append(drawer);
+  await Promise.resolve();
+  assert.equal(pulses.length, 3);
+  dom.window.close();
+});
+
+it("resets expanded disclosure controls owned by a closing drawer", async () => {
+  const dom = new JSDOM(`<div data-persistent-drawer-content data-state="open"><button aria-expanded="true" aria-controls="details">Show less</button><div id="details"></div><button id="unrelated" aria-expanded="true" aria-controls="external">Other</button></div><div id="external"></div>`);
+  const doc = dom.window.document, drawer = doc.querySelector("[data-persistent-drawer-content]")!;
+  writeSidebarChrome(doc, { device: "phone", orientation: "portrait", viewport: "narrow", hitTarget: "large" });
+  let clicks = 0, unrelated = 0;
+  drawer.querySelector("button")!.addEventListener("click", () => clicks++);
+  doc.querySelector("#unrelated")!.addEventListener("click", () => unrelated++);
+  const dispose = injectPhoneDrawers(doc);
+  drawer.setAttribute("data-state", "closed");
+  await Promise.resolve();
+  assert.equal(clicks, 1);
+  assert.equal(unrelated, 0);
+  dispose(); dom.window.close();
+});

@@ -352,7 +352,7 @@ function assertPhoneStyles(css: string): void {
   assert.doesNotMatch(aside, /translateX/);
   assert.match(
     css,
-    /\/\* bb-sidebar-phone-shelf \*\/\s*@media (?:not )?all \{\s*\[data-sidebar="inset"\]\[data-bb-motion-screen\] \{\s*border-radius: 55px;\s*overflow: clip;\s*box-shadow: -12px 0 24px rgb\(0 0 0 \/ 0\.10\);/,
+    /\/\* bb-sidebar-phone-shelf \*\/\s*@media (?:not )?all \{\s*\[data-sidebar="inset"\]\[data-bb-motion-screen="left"\] \{\s*border-radius: 55px;\s*overflow: clip;\s*box-shadow: -12px 0 24px rgb\(0 0 0 \/ 0\.10\);/,
   );
   assert.match(
     css,
@@ -364,7 +364,7 @@ function assertPhoneStyles(css: string): void {
   );
   assert.match(
     css,
-    /\/\* bb-sidebar-phone-shelf \*\/\s*@media (?:not )?all \{[^]*\[data-sidebar="inset"\]\[data-panel-shelf="shelf"\],\s*\[data-sidebar="inset"\]\[data-panel-shelf="full"\] \{\s*border-top-right-radius: 0;\s*border-bottom-right-radius: 0;\s*box-shadow: 67px 0 0 0 var\(--background\);/,
+    /\/\* bb-sidebar-phone-shelf \*\/\s*@media (?:not )?all \{[^]*\[data-sidebar="inset"\]\[data-bb-motion-screen="right"\],\s*\[data-sidebar="inset"\]\[data-panel-shelf="shelf"\],\s*\[data-sidebar="inset"\]\[data-panel-shelf="full"\] \{\s*border-radius: 0;\s*overflow: visible;\s*box-shadow: none;/,
   );
 }
 
@@ -389,7 +389,7 @@ describe("syncSidebarDepth chat screen", () => {
     };
     writeSidebarChrome(doc as unknown as Document, PHONE_CHROME);
     syncSidebarDepth(doc as unknown as Document);
-    assert.equal(inset.dataset.bbMotionScreen, "");
+    assert.equal(inset.dataset.bbMotionScreen, "left");
     assert.deepEqual(sent, []);
     translate = "0px";
     syncSidebarDepth(doc as unknown as Document);
@@ -918,6 +918,15 @@ describe("sidebarFingerRelease", () => {
       "right-dismiss",
     );
   });
+
+  it("does not interpret a drawer gesture as a gesture on its containing panel", () => {
+    for (const container of [{ "data-sidebar": "inset" }, { "data-sidebar": "panel" }]) {
+      const panel = releaseElement(container);
+      const drawer = releaseElement({ "data-persistent-drawer-content": "", "data-state": "open" }, panel);
+      assert.equal(readReleaseTarget(releaseElement({}, drawer)), "other");
+      assert.equal(readReleaseTarget(releaseElement({ tag: "button", "aria-label": "Show right panel" }, drawer)), "other");
+    }
+  });
 });
 
 describe("nextSidebarPhase", () => {
@@ -970,7 +979,7 @@ describe("applyChatScreen", () => {
     assert.equal(applyChatScreen(element, 0), null);
     assert.equal(inset.dataset.bbMotionScreen, undefined);
     assert.equal(applyChatScreen(element, 80), "push");
-    assert.equal(inset.dataset.bbMotionScreen, "");
+    assert.equal(inset.dataset.bbMotionScreen, "left");
     assert.equal(applyChatScreen(element, 120), null);
     assert.equal(applyChatScreen(element, 0), null);
     assert.equal(inset.dataset.bbMotionScreen, undefined);
@@ -982,7 +991,26 @@ describe("applyChatScreen", () => {
       getAttribute: (name: string) => (name === "data-sidebar-shelf" ? "open" : null),
     };
     assert.equal(applyChatScreen(inset as unknown as HTMLElement, 0), "push");
-    assert.equal(inset.dataset.bbMotionScreen, "");
+    assert.equal(inset.dataset.bbMotionScreen, "left");
+  });
+
+  it("distinguishes the right shelf while moving or held open, then clears the screen on close", () => {
+    for (const heldShelf of ["shelf", "full"]) {
+      let shelf = "closed";
+      const inset = {
+        dataset: {} as Record<string, string | undefined>,
+        getAttribute: (name: string) => (name === "data-panel-shelf" ? shelf : null),
+      };
+      const element = inset as unknown as HTMLElement;
+      assert.equal(applyChatScreen(element, -80), "push");
+      assert.equal(inset.dataset.bbMotionScreen, "right");
+      shelf = heldShelf;
+      assert.equal(applyChatScreen(element, 0), null);
+      assert.equal(inset.dataset.bbMotionScreen, "right");
+      shelf = "closed";
+      assert.equal(applyChatScreen(element, 0), null);
+      assert.equal(inset.dataset.bbMotionScreen, undefined);
+    }
   });
 });
 

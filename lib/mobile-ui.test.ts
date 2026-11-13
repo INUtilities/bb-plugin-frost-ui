@@ -4,11 +4,11 @@ import { describe, it } from "node:test";
 import { sidebarDepthCss, syncSidebarDepth } from "./sidebar-depth.ts";
 import { writeSidebarChrome } from "./sidebar-chrome.ts";
 
-describe("Mobile UI scope", () => {
-  it("uses the mobile name without publishing a global desktop theme", () => {
+describe("Frost UI scope", () => {
+  it("uses the frost-ui name and package identity", () => {
     const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
-    assert.equal(pkg.bb.name, "Mobile UI");
-    assert.equal(pkg.name, "bb-plugin-sidebar");
+    assert.equal(pkg.bb.name, "frost-ui");
+    assert.equal(pkg.name, "bb-plugin-frost-ui");
     assert.equal(pkg.bb.themes, undefined);
     const app = readFileSync(new URL("../app.tsx", import.meta.url), "utf8");
     assert.doesNotMatch(app, /mountSidebarCards|sidebar-cards/);

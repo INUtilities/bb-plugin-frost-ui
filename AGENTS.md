@@ -50,8 +50,8 @@
 
 ## 이 플러그인만의 규칙
 
-- plugin id: `sidebar`
+- plugin id: `frost-ui`
 - 확인 명령: `npm test`, `npm run typecheck`
-- 제품 계약은 `skills/sidebar/SKILL.md`를 따른다.
-- 표시 이름은 `Mobile UI`이며 기존 설치 호환을 위해 package name `bb-plugin-sidebar`와 plugin id `sidebar`를 유지한다.
-- phone 패널 모션·화면 효과·햅틱만 소유한다. desktop·tablet 꾸밈과 전역 테마는 등록하지 않는다.
+- 제품 계약은 `skills/frost-ui/SKILL.md`를 따른다.
+- 표시 이름과 plugin id는 `frost-ui`, package name은 `bb-plugin-frost-ui`다.
+- phone 패널 모션·화면 효과·햅틱과 공통 떠 있는 표면의 frost 디자인을 소유한다. 전역 테마는 등록하지 않는다.

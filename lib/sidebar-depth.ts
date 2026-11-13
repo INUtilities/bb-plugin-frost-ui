@@ -312,6 +312,7 @@ export function rightPanelTabSwipe(
 export function readReleaseTarget(target: EventTarget | null): ReleaseTarget {
   const element = asElement(target);
   if (element === null) return "other";
+  if (element.closest("[data-persistent-drawer-content]")?.getAttribute("data-state") === "open") return "other";
   const button = element.closest('button, [role="button"]');
   if (button !== null) {
     const label = button.getAttribute("aria-label") ?? "";
